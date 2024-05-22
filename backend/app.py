@@ -1,59 +1,88 @@
-from flask import Flask, request , jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pandas as pd 
-import io 
+import pandas as pd
+import io
 
-# Init the flask app , Start a server file for my app 
+# Init the flask app, Start a server file for my app
 app = Flask('__name__')
 
-# Enable CORS 
-CORS (app)
+# Enable CORS
+CORS(app)
 
-# Set the route for uploading files 
+# Define our Global Variable to store all our File Data in an empty dictionary
+geojson_data = {}
+
+# Function that will convert DataFrame to our GEOjson
+def df_to_geojson(df):
+    print(request.files) # Print for errro handling 
+    features = []
+    for _, row in df.iterrows():
+        feature = {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',  # Corrected 'type' value to 'Point'
+                'coordinates': [row['LongStart'], row['LatStart']]
+            },
+            'properties': {
+                'CruiseIDstr': row['CruiseIDstr'],
+                'SampleLabel': row['SampleLabel'],
+                'WatchIDStr': row['WatchIDStr'],
+                'StartTime': row['StartTime'],
+                'Alpha': row['Alpha'],
+                'Distance': row['Distance'],
+                'FlySwim': row['FlySwim'],
+                'Count': row['Count'],
+                'Observer': row['Observer'],
+                'PlatformSpeed': row['PlatformSpeed'],
+                'Windspd': row['Windspd']
+            }
+        }
+        features.append(feature)
+
+    return {
+        'type': 'FeatureCollection',
+        'features': features
+    }
+
+# Define our endpoints
+@app.route('/', methods=['GET'])
+def home():
+    return 'Welcome to the Seabird Survey App API.'
+
+# Set the route for uploading files
 @app.route('/upload', methods=['POST'])
-# Define a function that wil hold all the logic for our file analysis 
+# Define a function that will hold all the logic for our file analysis
 def upload_file():
-    # Check if file is in request 
-  if 'file ' not in request.files:
-        # return json error 
-    return jsonify({'error: Error uploading file'}), 400 
-   
-   # Get the file requested 
-  file = request.files['file']
-    # Check the file has a valid name 
-  if file.filename == '':
-      # return errror 
-    return jsonify ({'error': 'No selected file uploaded'}), 400 
+    # Check if file is in request
+    if 'file' not in request.files:  # Corrected key 'file ' to 'file'
+        # return json error
+        return jsonify({'error': 'No file part'}), 400
+    
+    # Get the file requested
+    file = request.files['file']
+    # Check the file has a valid name
+    if file.filename == '':
+        # return error
+        return jsonify({'error': 'No selected file uploaded'}), 400
 
-  try:
+    try:
         # Read the file into a pandas DataFrame
         df = pd.read_csv(io.StringIO(file.stream.read().decode('UTF8')), header=0)
         
-        # Extract LatStart and LongStart columns
-        if 'LatStart' in df.columns and 'LongStart' in df.columns:
-            # Convert the list of columns into a list of dictionaries 
-            # We do this so we can it can easily be sent to our FrontEnd as a JSON Response
-            locations = df[['LatStart', 'LongStart']].to_dict(orient='records')
-        else:
-            return jsonify({"error": "LatStart and LongStart columns not found"}), 400
-        
-        # Perform some basic analysis
-        analysis = {
-            "num_records": len(df),
-            "columns": list(df.columns),
-            "summary_statistics": df.describe().to_dict(),
-            "locations": locations
-        }
-        
-        # Return the analysis results as JSON response 
-        return jsonify({"message": "File processed successfully", "analysis": analysis}), 200
-  except Exception as e:
+        # Convert our DataFrame into geoJSON
+        global geojson_data
+        geojson_data = df_to_geojson(df)
+
+        # Return the geoJSON data
+        return jsonify({"message": "File processed successfully", "geojson": geojson_data}), 200
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Define our geojson endpoint that has our stored data
+@app.route('/get-geojson', methods=['GET'])
+def get_geojson():
+    return jsonify(geojson_data)
+
+# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
