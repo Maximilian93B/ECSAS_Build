@@ -14,13 +14,13 @@ geojson_data = {}
 
 # Function that will convert DataFrame to our GEOjson
 def df_to_geojson(df):
-    print(request.files) # Print for errro handling 
+    print(request.files) # debug  
     features = []
     for _, row in df.iterrows():
         feature = {
             'type': 'Feature',
             'geometry': {
-                'type': 'Point',  # Corrected 'type' value to 'Point'
+                'type': 'Point',  
                 'coordinates': [row['LongStart'], row['LatStart']]
             },
             'properties': {
@@ -47,14 +47,14 @@ def df_to_geojson(df):
 # Define our endpoints
 @app.route('/', methods=['GET'])
 def home():
-    return 'Welcome to the Seabird Survey App API.'
+  return 'Welcome to the Seabird Survey App API.'
 
 # Set the route for uploading files
-@app.route('/upload', methods=['POST'])
 # Define a function that will hold all the logic for our file analysis
+@app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if file is in request
-    if 'file' not in request.files:  # Corrected key 'file ' to 'file'
+    if 'file' not in request.files: 
         # return json error
         return jsonify({'error': 'No file part'}), 400
     
