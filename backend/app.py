@@ -3,23 +3,19 @@ from flask_cors import CORS
 import pandas as pd
 import io
 import logging
-import openpyxl
 
-# Init the flask app, Start a server file for my app
+# Initialize the Flask app
 app = Flask('__name__')
-
-# Enable CORS
 CORS(app)
 
-
-# Config for logging 
+# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Define our Global Variable to store all our File Data in an empty dictionary
+# Global variable to store GeoJSON data
 geojson_data = {}
 
-# Function that will convert DataFrame to our GEOjson
+# Function to convert DataFrame to GeoJSON
 def df_to_geojson(df):
     features = []
     for _, row in df.iterrows():
@@ -31,9 +27,9 @@ def df_to_geojson(df):
                     'coordinates': [row['LongStart'], row['LatStart']]
                 },
                 'properties': {
-                    'CruiseIDstr': row['CruiseIDstr'],
+                    'CruiseIDstr': row['CruiseIDOrig'],
                     'SampleLabel': row['SampleLabel'],
-                    'WatchIDStr': row['WatchIDStr'],
+                    'WatchIDStr': row['WatchIDOrig'],
                     'StartTime': row['StartTime'],
                     'Alpha': row['Alpha'],
                     'Distance': row['Distance'],
@@ -41,7 +37,7 @@ def df_to_geojson(df):
                     'Count': row['Count'],
                     'Observer': row['Observer'],
                     'PlatformSpeed': row['PlatformSpeed'],
-                    'Windspd': row['Windspd']
+                    'Windspd': row['WindSpeed']
                 }
             }
             features.append(feature)
@@ -53,13 +49,10 @@ def df_to_geojson(df):
         'features': features
     }
 
-# Define our endpoints
 @app.route('/', methods=['GET'])
 def home():
-  return 'Welcome to the Seabird Survey App API.'
+    return 'Welcome to the Seabird Survey App API.'
 
-# Set the route for uploading files
-# Define a function that will hold all the logic for our file analysis
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -76,13 +69,16 @@ def upload_file():
         logger.debug(f"Sheet names in the uploaded file: {excel_data.sheet_names}")
 
         # Check for required columns in each sheet
-        required_columns = {'LongStart', 'LatStart', 'CruiseIDstr', 'SampleLabel', 'WatchIDStr', 
+        required_columns = {'LongStart', 'LatStart', 'CruiseIDOrig', 'SampleLabel', 'WatchIDOrig', 
                             'StartTime', 'Alpha', 'Distance', 'FlySwim', 'Count', 'Observer', 
-                            'PlatformSpeed', 'Windspd'}
+                            'PlatformSpeed', 'WindSpeed'}
         
+        logger.debug(f"Required columns: {required_columns}")
+
         sheet_name = None
         for sheet in excel_data.sheet_names:
             df = pd.read_excel(excel_data, sheet_name=sheet)
+            logger.debug(f"Columns in sheet '{sheet}': {set(df.columns)}")
             if required_columns.issubset(set(df.columns)):
                 sheet_name = sheet
                 break
@@ -103,11 +99,9 @@ def upload_file():
         logger.error(f"Exception occurred: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/get-geojson', methods=['GET'])
 def get_geojson():
     return jsonify(geojson_data)
 
-# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
