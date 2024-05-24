@@ -1,10 +1,16 @@
+'use client';
 import Link from 'next/link';
 import FileUpload from './components/FileUpload';
+import React , { useState } from 'react';
 
 
 // Make a component and name it Home 
 // This will be our main component
 const Home = () => {
+const [locations,setLocations] = useState<any>(null);
+  const handleUploadSuccess = () => {
+    console.log('Upload successful, locations', locations);
+  };
   // Every React component needs a return function 
   return (
     <div className="min-h-screen bg-white-100 flex flex-col items-center justify-center">
@@ -19,7 +25,7 @@ const Home = () => {
         <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
           Upload Data
           </button>
-         <FileUpload/>
+         <FileUpload setLocations={setLocations} onUploadSuccess={handleUploadSuccess}/>
          <div className="mt-10">
           <Link href="/AnalyticsPage" className="text-blue-500 hover:underline">
             View Seabird Data Here 
